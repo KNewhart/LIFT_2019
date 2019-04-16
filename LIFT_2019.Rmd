@@ -151,6 +151,18 @@ dev.off()
 ```
 
 
+```{r eval=FALSE, include=FALSE}
+acf.results <- apply(SCADA.data.clean, MARGIN = 2, function(x) acf(x))
+png("images/LIFT_2019_acf_01.png", units = "in", res = 200, width = 6.5, height = 8, family="A", pointsize = 10)
+par(mfrow=c(length(acf.results)/3,3), mar=c(3,3,3,3))
+for (i in 1:length(acf.results)) {
+  plot(acf.results[[i]], main=SCADA.data.names[i])
+}
+dev.off()
+```
+
+
+
 For data-driven analysis, a *clean* dataset is required to appropriately train a model in order to (i) identify relationships between variabels and (ii) define in-control and out-of-control conditions. The first step in data cleaning is the visual inspection of timeseries plots. Wastewater treatment data provided by City of Boulder, Colorado is plotted in Figure 1, minus process variables that did not change (e.g., variables from Zone 9) or did not have numerical data (e.g., influent flow) throughout the window of time provided (`r as.Date(org.range)`). However, a shift in flows at the end of February led to subsetting data to `r as.Date(range(index(SCADA.data)))`. Is it okay to subset to this range? Or do we want to predict under February's conditions as well?
 
 
@@ -159,6 +171,7 @@ Principal component analysis (PCA) shows that the majority of the variation pres
 
 A strict linear model (LM) requires that the response variable follows the normal distribution whilst the generalized linear model (GLM) is an extension of the LM that allows the for models whose response variable follows different distributions. Generalized additive models (GAM) is an additive modeling technique where the impact of the predictive variables is captured through smooth functions which-depending on the underlying patterns in the data-can be nonlinear. Variables that appeared to trend with `r SCADA.data.names[11]` are in Figures 3 and 4. 
 
+Figure 5 includes autocorrelation functions to visually identify the best lag. 
 
 <div custom-style="FigureCenter">
 ![](images/LIFT_2019_timeseries_01.png)
@@ -172,7 +185,7 @@ A strict linear model (LM) requires that the response variable follows the norma
 **Figure 2.** Principal component analysis of process data from the City of Boulder, Colorado municipal wastewater treatment facility between `r as.Date(range(index(SCADA.data)))`.
 
 **Table 1.** PCA variable contributions to City of Boulder, Colorado municipal wastewater treatment facility
-```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+```{r eval=FALSE, message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
 pca.results.summary <- factoextra::get_pca_var(pca.results)
 pca.results.contrib <- pca.results.summary$contrib
 knitr::kable(pca.results.contrib[order(-pca.results.contrib[,1]),1:6], digits = 1)
@@ -189,3 +202,9 @@ knitr::kable(pca.results.contrib[order(-pca.results.contrib[,1]),1:6], digits = 
 ![](images/LIFT_2019_gam_01.png)
 </div>
 **Figure 4.** GAM model for predicting `r SCADA.data.names[11]`.
+
+
+<div custom-style="FigureCenter">
+![](images/LIFT_2019_acf_01.png)
+</div>
+**Figure 5.** Autocorrelation plots of process variables
