@@ -159,6 +159,15 @@ for (i in 1:length(acf.results)) {
   plot(acf.results[[i]], main=SCADA.data.names[i])
 }
 dev.off()
+
+ammonia.col <- which(colnames(SCADA.data.clean) == "Abasin 3 Ammonia")
+acf.results <- apply(SCADA.data.clean[,-ammonia.col], MARGIN = 2, function(x) acf(c(SCADA.data.clean[,ammonia.col],x)))
+# png("images/LIFT_2019_acf_02.png", units = "in", res = 200, width = 6.5, height = 8, family="A", pointsize = 10)
+par(mfrow=c(length(acf.results)/3,3), mar=c(3,3,3,3))
+for (i in 1:length(acf.results)) {
+  plot(acf.results[[i]]
+}
+dev.off()
 ```
 
 
