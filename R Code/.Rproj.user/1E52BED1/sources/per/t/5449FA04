@@ -1,0 +1,25 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1567449130378.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "3596693205",
+    "id" : "5449FA04",
+    "lastKnownWriteTime" : 1567185476,
+    "last_content_update" : 1567185476,
+    "path" : "C:/Users/Kathr/Dropbox/Code/LIFT 2019/R Code/LIFT2019_datacompiler_v3.R",
+    "project_path" : "LIFT2019_datacompiler_v3.R",
+    "properties" : {
+        "cursorPosition" : "192,31",
+        "scrollLine" : "168"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

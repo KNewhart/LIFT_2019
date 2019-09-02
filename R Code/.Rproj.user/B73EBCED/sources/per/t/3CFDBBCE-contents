@@ -1,0 +1,352 @@
+library(xts)
+library(readxl)
+
+obj.list <- c("ab3_do", 
+              "ab3_3.5",
+              "ab3_4.0",
+              "ab3_4.0_300")
+
+## Import data
+setwd("C:\\Users\\Kate Newhart\\odrive\\Mines\\LIFT\\LIFT 2019 Challenge\\R Code")
+import_data <- "do"
+source("src/import_data.R")
+import_data <- "3.5 mg/L 90"
+source("src/import_data.R")
+import_data <- "4.0 mg/L 90"
+source("src/import_data.R")
+import_data <- "4.0 mg/L 300"
+source("src/import_data.R")
+save(list=obj.list,file="data/ab3_objects.RData")
+
+
+load("data/ab3_objects.RData")
+
+
+
+## Add missing timestamps
+for(x in obj.list) {
+  time.intervals <- sapply(2:nrow(get(x)), function(i) difftime(index(get(x))[i], index(get(x))[i-1], units="mins"))
+  if(length(which(time.intervals != 5)) > 0) {
+    for(i in 1:length(which(time.intervals != 5))){
+      start.time <- index(get(x))[which(time.intervals != 5)[i]]
+      end.time <- index(get(x))[which(time.intervals != 5)[i]+1]
+      new.times <- seq(start.time, end.time, by=5*60)
+      new.x <- merge(get(x), new.times[2:(length(new.times)-1)], fill=NA)
+      assign(x,new.x)
+    }
+  }
+}
+
+## Plot it
+for(i in obj.list){
+  data <- data.frame(get(i))
+  xrange <- 1:1440/5
+  par(mar=c(4,4,2,5), mfrow=c(2,2))
+  
+  # Ammonia (L)
+  plot(data[xrange,grep("Ammonia", colnames(data))], type="l",ylab="", col="blue", main=i)
+  mtext(side=2,line=3, colnames(data)[grep("Ammonia", colnames(data))], col="blue")
+  if(i==obj.list[3]) abline(a=4, b=0)
+  if(i==obj.list[4]) abline(a=4, b=0)
+  if(i==obj.list[2]) abline(a=3.5, b=0)
+  
+  # Z6 DO (R)
+  par(new=T)
+  plot(data[xrange,grep("Z6.DO", colnames(data))], type="l",axes=FALSE, xlab="", ylab="", col="red")
+  axis(4)
+  mtext(side=4,line=3, colnames(data)[grep("Z6.DO", colnames(data))], col="red")
+  
+  # Influent Flow (L)
+  plot(data[xrange,grep("INFLUENT.FLOW", colnames(data))], type="l", ylab="", col="blue", main=i)
+  mtext(side=2,line=3, colnames(data)[grep("INFLUENT.FLOW", colnames(data))], col="blue")
+  
+  # Z6 Air Flow (R)
+  par(new=T)
+  plot(data[xrange,grep("Z6.Header", colnames(data))], type="l",axes=FALSE, xlab="", ylab="", col="red")
+  mtext(side=4,line=3, colnames(data)[grep("Z6.Header", colnames(data))], col="red")
+  axis(4)
+  
+  # Ammonia (L)
+  plot(data[xrange,grep("Ammonia", colnames(data))], type="l",ylab="", col="blue", main=i)
+  mtext(side=2,line=3, colnames(data)[grep("Ammonia", colnames(data))], col="blue")
+  if(i==obj.list[3]) abline(a=4, b=0)
+  if(i==obj.list[4]) abline(a=4, b=0)
+  if(i==obj.list[2]) abline(a=3.5, b=0)
+  
+  # Influent Flow (R)
+  par(new=T)
+  plot(data[xrange,grep("INFLUENT.FLOW", colnames(data))], type="l", ylab="", col="red", axes=FALSE)
+  mtext(side=4,line=3, colnames(data)[grep("INFLUENT.FLOW", colnames(data))], col="red")
+  axis(4)
+  
+  # Z6 DO (L)
+  plot(data[xrange,grep("Z6.DO", colnames(data))], type="l", ylab="", col="blue", main=i)
+  mtext(side=2,line=3, colnames(data)[grep("Z6.DO", colnames(data))], col="blue")
+  
+  # Z6 Air
+  par(new=T)
+  plot(data[xrange,grep("Z6.Header", colnames(data))], type="l",axes=FALSE, xlab="", ylab="", col="red")
+  axis(4)
+  mtext(side=4,line=3, colnames(data)[grep("Z6.Header", colnames(data))], col="red")
+  
+}
+
+## Equalize number of observations in each dataset
+rows2train <- min(sapply(obj.list, function(x) nrow(get(x))))
+lapply(obj.list, function(x) assign(x, get(x)[(nrow(get(x)) - rows2train):nrow(get(x)),], envir = .GlobalEnv))
+
+## Preserve the original 
+real.data <- lapply(obj.list, function(x) get(x))
+real.means <- lapply(obj.list, function(x) apply(get(x), 2, mean))
+real.sd <- lapply(obj.list, function(x) apply(get(x), 2, sd))
+
+# Scale data
+lapply(obj.list, function(x) assign(x, scale(get(x)), envir = .GlobalEnv))
+# Check scaling was done correctly:
+# (real.data[[1]][1,1]-real.means[[1]][1])/real.sd[[1]][1]
+
+## Convert timestamps to runtime and project onto a unit circle 
+for(x in obj.list) {
+  time.stamps <- difftime(index(get(x)), index(get(x))[1], units = "mins")
+  time.stamps <- as.numeric(time.stamps) %% 1440 # Cycles of 1 day are constructed (1440 min/day)
+  time.stamps <- (time.stamps*360/1440)*pi/180 # Cycles of minutes are converted to radians
+  assign(x, cbind(time.stamps,get(x)))
+}
+
+## Diurnal model
+for(x in obj.list) {
+  predict.col <- which(colnames(get(x)) == "AB3.Z7.Ammonia.mg.N.L")
+  
+  yy <- as.matrix(get(x)[,predict.col])
+  xx <- as.matrix(get(x)[,-predict.col])
+  
+  diurnal.mod <- lm(yy~cos(xx[,1])+sin(xx[,1])+cos(2*xx[,1])+sin(2*xx[,1]))
+  print(summary(diurnal.mod))
+  # print(paste(x, summary(diurnal.mod)$adj.r.squared))
+  
+  plot(yy, main = x)
+  plot(cos(xx[,1]), yy, main = x)
+  acf(yy, lag.max=1440, main = x)
+  acf(resid(diurnal.mod),lag.max=1440, main = x)
+  pacf(resid(diurnal.mod),lag.max=1440, main = x)
+}
+# For some reason, the 3.5 mg/L datset does not have the same diurnal trend... 
+# [1] "ab3_do 0.410259255825081"
+# [1] "ab3_3.5 0.157621574973961"
+# [1] "ab3_4.0 0.499541938822612"
+
+
+## Add diurnal model predictors to dataset
+for(x in obj.list) {
+  cos.x <- cos(get(x)[,1])
+  names(cos.x) <- "cos.x"
+  sin.x <- sin(get(x)[,1])
+  names(sin.x) <- "sin.x"
+  cos.2x <- cos(2*get(x)[,1])
+  names(cos.2x) <- "cos.2x"
+  sin.2x <- sin(2*get(x)[,1])
+  names(sin.2x) <- "sin.2x"
+  assign(x, cbind(get(x), cos.x, sin.x, cos.2x, sin.2x), envir = .GlobalEnv)
+}
+
+## Ridge Regression & Adaptive Lasso
+library(glmnet)
+# For testing
+x <- obj.list[1]
+x <- obj.list[2]
+x <- obj.list[3]
+# Actual loop
+for(x in obj.list) {
+  predict.col <- which(colnames(get(x)) == "AB3.Z7.Ammonia.mg.N.L")
+  yy <- as.matrix(get(x)[,predict.col])
+  xx <- as.matrix(get(x)[,-c(1,predict.col)])
+  remove <- unique(unlist(apply(get(x),2,function(n) which(is.na(n)))))
+  if(length(remove)>0) yy <- yy[-remove,]
+  if(length(remove)>0) xx <- xx[-remove,]
+  
+  # Ridge regression
+  mod.ridge <- cv.glmnet(xx,yy,alpha=0)
+  # Define weights
+  w3 = 1/abs(matrix(coef(mod.ridge, s=mod.ridge$lambda.min)[, 1][-1]))^1
+  # Adaptive Lasso
+  mod.adaptive = cv.glmnet(xx, yy,  alpha=1, penalty.factor=w3)
+  
+  # Plot results
+  plot(mod.adaptive)
+  rain=rainbow(ncol(xx))
+  plot(mod.adaptive$glmnet.fit, xvar="lambda", label=TRUE,col=rain)
+  abline(v = log(mod.adaptive$lambda.min), col = "black")
+  abline(v = log(mod.adaptive$lambda.1se), col = "blue")
+  abline(v = log(6*mod.adaptive$lambda.1se),col= "red")
+  abline(v = 0,col="green")
+
+  # Predict different lambdas
+  s.list <- c(as.numeric(mod.adaptive$lambda.min), as.numeric(mod.adaptive$lambda.1se), as.numeric(6*mod.adaptive$lambda.1se), 1)
+  par(mfrow=c(2,2), oma = c(0,0,2,0))
+  par(mar=c(3,3,2,2), mgp=c(1.75,.5,0))
+  for(s in s.list) {
+    coef <- coef(mod.adaptive, s=s)
+    selected_attributes = (coef@i[-1]) 
+    # colnames(xx)[selected_attributes]
+    predictions <- predict(mod.adaptive,newx=xx, s=s)
+    SSE=mean((yy-predictions)^2); print(SSE)
+    SST=mean((yy-mean(yy))^2); print(SST)
+    Rsqu=1-SSE/SST; print(Rsqu)
+    
+    # Plot prediction
+    data1 <- yy
+    data2 <- predictions
+    max.val <- max(c(data1, data2))
+    min.val <- min(c(data1, data2))
+    data2plot <- cbind(data1, data2)
+    
+    plot(x = data2plot[,1], y = data2plot[,2]
+         , xlim=c(min.val,max.val), ylim=c(min.val,max.val)
+         , xlab="Actal", ylab="Predicted"
+         , pch=20
+         , main = paste("Lambda = ",round(s,3),", Variables = ", length(selected_attributes), collapse="")
+         )
+    abline(a=0,b=1,col="blue", lwd=2)
+    
+    legend("bottomright", 
+           inset = c(-.01,-.01),
+           legend = c("Observation", "Perfect Fit"
+                      , paste0("R-sq = ",round(Rsqu,2))
+           ),
+           col = c("black", "blue", NA),
+           pch = c(20,NA, NA),
+           lwd = c(NA,2, NA),
+           bty = "n",
+           xpd=NA,
+           xjust = 1,
+           text.font = 2)
+  }
+  mtext(x,side=3,outer=TRUE,font=2)
+  
+  # residuals=yy-predictions
+  # plot(yy,residuals,main=x)
+  # acf(residuals, lag.max=1440)
+  # pacf(residuals, lag.max=1440)
+  par(mfrow=c(1,1), oma = c(0,0,0,0))
+  for(s in s.list) {
+    coef <- coef(mod.adaptive, s=s)
+    selected_attributes = (coef@i[-1])
+    # Response of other variables
+    for(i in selected_attributes) {
+      plot(yy,xx[,i[1]],xlab="AB3.Z7.NH3.mg.L",ylab=colnames(xx)[i],main=paste("Scaled",x,"when alpha =",round(s,2)))
+    }
+  }
+  # Nonlinear relationships:
+    # - ab3_do, AB3.Z8.DO, AB3.Z7.DO
+    # - ab3_3.5, AB3.Z7.DO
+    # - ab3_4.0, AB3.Z8.DO, AB3.Z7.DO
+}
+
+
+## Lag data for simulated prediction
+for(x in obj.list) {
+  lag.30 <- real.data[[which(obj.list.lag == x)]]
+  predict.col <- which(colnames(lag.30) == "AB3.Z7.Ammonia.mg.N.L")
+  lag.30 <- cbind(as.matrix(lag.30[1:(nrow(lag.30)-6),-predict.col]), as.matrix(lag.30[7:nrow(lag.30),predict.col]))
+  lag.30 <- scale(lag.30)
+  assign(paste("lag.30.",x,sep=""), lag.30, envir = .GlobalEnv)
+}
+obj.list.lag <-c("lag.30.ab3_do", "lag.30.ab3_3.5", "lag.30.ab3_4.0")
+
+# For testing
+x <- obj.list.lag[1]
+x <- obj.list.lag[2]
+x <- obj.list.lag[3]
+
+for(x in obj.list.lag) {
+  predict.col <- which(colnames(get(x)) == "AB3.Z7.Ammonia.mg.N.L")
+  yy <- as.matrix(get(x)[,predict.col])
+  xx <- as.matrix(get(x)[,-c(1,predict.col)])
+  remove <- unique(unlist(apply(get(x),2,function(n) which(is.na(n)))))
+  if(length(remove)>0) yy <- yy[-remove,]
+  if(length(remove)>0) xx <- xx[-remove,]
+  
+  # Ridge regression
+  mod.ridge <- cv.glmnet(xx,yy,alpha=0)
+  # Define weights
+  w3 = 1/abs(matrix(coef(mod.ridge, s=mod.ridge$lambda.min)[, 1][-1]))^1
+  # Adaptive Lasso
+  mod.adaptive = cv.glmnet(xx, yy,  alpha=1, penalty.factor=w3)
+  
+  # Plot results
+  plot(mod.adaptive)
+  rain=rainbow(ncol(xx))
+  plot(mod.adaptive$glmnet.fit, xvar="lambda", label=TRUE,col=rain)
+  abline(v = log(mod.adaptive$lambda.min), col = "black")
+  abline(v = log(mod.adaptive$lambda.1se), col = "blue")
+  abline(v = log(6*mod.adaptive$lambda.1se),col= "red")
+  abline(v = 0,col="green")
+  
+  # Predict different lambdas
+  s.list <- c(as.numeric(mod.adaptive$lambda.min), 
+              as.numeric(mod.adaptive$lambda.1se),
+              as.numeric(exp(-2)), 
+              1
+              # as.numeric(6*mod.adaptive$lambda.1se), 
+              )
+  par(mfrow=c(2,2), oma = c(0,0,2,0))
+  par(mar=c(3,3,2,2), mgp=c(1.75,.5,0))
+  for(s in s.list) {
+    coef <- coef(mod.adaptive, s=s)
+    selected_attributes = (coef@i[-1]) 
+    # colnames(xx)[selected_attributes]
+    predictions <- predict(mod.adaptive,newx=xx, s=s)
+    SSE=mean((yy-predictions)^2); print(SSE)
+    SST=mean((yy-mean(yy))^2); print(SST)
+    Rsqu=1-SSE/SST; print(Rsqu)
+    
+    # Plot prediction
+    data1 <- yy
+    data2 <- predictions
+    max.val <- max(c(data1, data2))
+    min.val <- min(c(data1, data2))
+    data2plot <- cbind(data1, data2)
+    
+    plot(x = data2plot[,1], y = data2plot[,2]
+         , xlim=c(min.val,max.val), ylim=c(min.val,max.val)
+         , xlab="Actal", ylab="Predicted"
+         , pch=20
+         , main = paste("Lambda = ",round(s,3),", Variables = ", length(selected_attributes), collapse="")
+    )
+    abline(a=0,b=1,col="blue", lwd=2)
+    
+    legend("bottomright", 
+           inset = c(-.01,-.01),
+           legend = c("Observation", "Perfect Fit"
+                      , paste0("R-sq = ",round(Rsqu,2))
+           ),
+           col = c("black", "blue", NA),
+           pch = c(20,NA, NA),
+           lwd = c(NA,2, NA),
+           bty = "n",
+           xpd=NA,
+           xjust = 1,
+           text.font = 2)
+  }
+  mtext(x,side=3,outer=TRUE,font=2)
+  
+  # residuals=yy-predictions
+  # plot(yy,residuals,main=x)
+  # acf(residuals, lag.max=1440)
+  # pacf(residuals, lag.max=1440)
+  par(mfrow=c(1,1), oma = c(0,0,0,0))
+  for(s in s.list) {
+    coef <- coef(mod.adaptive, s=s)
+    selected_attributes = (coef@i[-1])
+    # Response of other variables
+    for(i in selected_attributes) {
+      plot(yy,xx[,i[1]],xlab="AB3.Z7.NH3.mg.L",ylab=colnames(xx)[i],main=paste("Scaled",x,"when alpha =",round(s,2)))
+    }
+  }
+
+}  
+
+## HRT Correction
+source("src/hrt_correction.R")
+# Takes a minute...
+sapply(obj.list, function(x) assign(paste0("hrt.",x), hrt_correction(get(x)), envir = .GlobalEnv))

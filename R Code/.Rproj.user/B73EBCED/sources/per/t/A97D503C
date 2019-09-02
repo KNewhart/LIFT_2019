@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1561406818139.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "126955494",
+    "id" : "A97D503C",
+    "lastKnownWriteTime" : 1562517295,
+    "last_content_update" : 1562517295326,
+    "path" : "C:/Users/Kate Newhart/odrive/Mines/Code/LIFT 2019/R Code/src/import_data.R",
+    "project_path" : "src/import_data.R",
+    "properties" : {
+        "cursorPosition" : "29,58",
+        "scrollLine" : "0"
+    },
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

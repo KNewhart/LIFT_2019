@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1561406821189.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "259768927",
+    "id" : "3CFDBBCE",
+    "lastKnownWriteTime" : 1562343611,
+    "last_content_update" : 1562343611,
+    "path" : "C:/Users/Kate Newhart/odrive/Mines/Code/LIFT 2019/R Code/LIFT2019_datacompiler_v3.R",
+    "project_path" : "LIFT2019_datacompiler_v3.R",
+    "properties" : {
+        "cursorPosition" : "128,2",
+        "scrollLine" : "0"
+    },
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

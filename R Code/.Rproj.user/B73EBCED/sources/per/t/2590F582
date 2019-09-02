@@ -1,0 +1,23 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1562704531638.000,
+    "dirty" : false,
+    "encoding" : "",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "2590F582",
+    "lastKnownWriteTime" : 28147974415515764,
+    "last_content_update" : 1562704531638,
+    "path" : null,
+    "project_path" : null,
+    "properties" : {
+        "id" : "672cb0e536fb496082364398dd1d0caf",
+        "name" : "mod.adaptive",
+        "title" : "mod.adaptive"
+    },
+    "relative_order" : 12,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "object_explorer"
+}

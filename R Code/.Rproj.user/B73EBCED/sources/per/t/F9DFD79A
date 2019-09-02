@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1561406825400.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "76|77|146|0|\n",
+    "hash" : "3329598139",
+    "id" : "F9DFD79A",
+    "lastKnownWriteTime" : 1562531513,
+    "last_content_update" : 1562531513023,
+    "path" : "C:/Users/Kate Newhart/odrive/Mines/Code/LIFT 2019/R Code/compare_dataset_variability_KN.R",
+    "project_path" : "compare_dataset_variability_KN.R",
+    "properties" : {
+        "cursorPosition" : "20,0",
+        "scrollLine" : "0"
+    },
+    "relative_order" : 3,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

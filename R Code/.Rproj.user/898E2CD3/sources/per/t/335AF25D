@@ -1,0 +1,25 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1567013915899.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "126955494",
+    "id" : "335AF25D",
+    "lastKnownWriteTime" : 1562517295,
+    "last_content_update" : 1562517295,
+    "path" : "C:/Users/Kathr/Dropbox/Code/LIFT 2019/R Code/src/import_data.R",
+    "project_path" : "src/import_data.R",
+    "properties" : {
+        "cursorPosition" : "11,1",
+        "scrollLine" : "23"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

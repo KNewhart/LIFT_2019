@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1562526960491.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "3151439878",
+    "id" : "263BCDFA",
+    "lastKnownWriteTime" : 1562762097,
+    "last_content_update" : 1562762097189,
+    "path" : "C:/Users/Kate Newhart/odrive/Mines/Code/LIFT 2019/R Code/02_forecasting.R",
+    "project_path" : "02_forecasting.R",
+    "properties" : {
+        "cursorPosition" : "131,2",
+        "scrollLine" : "0"
+    },
+    "relative_order" : 6,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

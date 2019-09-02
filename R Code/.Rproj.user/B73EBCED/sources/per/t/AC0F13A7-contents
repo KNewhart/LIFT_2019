@@ -1,0 +1,19 @@
+printToPowerPoint <- function(code.block, presentation.path = "my_pres.pptx") {
+  library(officer)
+  library(magrittr)
+  library(rvg)
+  library(xts)
+  
+  # my_pres <- read_pptx()
+  # my_pres <- read_pptx(path = "my_pres.pptx")
+  # layout_summary(my_pres)
+  
+  if(!exists(presentation.path)) my_pres <- read_pptx(path = "C:/Users/Kate Newhart/Desktop/my_pres.pptx")
+  if(exists(presentation.path)) my_pres <- read_pptx(path = presentation.path)
+  
+  my_pres <- my_pres %>% 
+    add_slide(layout="Only Content", master = "CSM_16x9")
+  my_pres <- ph_with_vg(my_pres, code=code.block, type="body")
+  
+  print(my_pres, presentation.path)
+}
