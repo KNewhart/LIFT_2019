@@ -1,0 +1,26 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1571678186842.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "CACC9E77",
+    "lastKnownWriteTime" : 1571693520,
+    "last_content_update" : 1571693520901,
+    "path" : "C:/Users/Kate Newhart/Dropbox/Code/LIFT_2019/R Code/LIFT_2019_October.R",
+    "project_path" : "LIFT_2019_October.R",
+    "properties" : {
+        "cursorPosition" : "33,0",
+        "scrollLine" : "0",
+        "tempName" : "Untitled1"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 3,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
