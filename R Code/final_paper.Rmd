@@ -26,7 +26,7 @@ knitr::opts_chunk$set(fig.path="figures/", fig.align="center", fig.fullwidth=TRU
 ##### Page break
 # Introduction 
 
-One of the greatest and costliest threats to surface waterways in the United States is nutrient pollution (Environmental Protection Agency) 2011). The removal of nitrogen and phosphorus from water at municipal wastewater treatment plants (WWTP) is necessary to address the growing environmental challenge. As states implement increasingly stringint nutrient limits on WWTP, the cost of has wastewater treatment increased substancially. Biological nutrient removal is acheived by introducing dissolved oxygen (DO) via industrial air blowers, which is one of the largest operating costs for WWTP. Conventionally, air blower output is increased or decreased relative to the measured concentration of DO in an aeration basin to maintain a DO setpoint where nitrogen removal is effectively guarenteed. While this approach ensures treatment, there are multiple drawback. DO control  is energy inefficient as aeration is provided whether ammonia is present or absent; conventional control leads to large fluctuations in air demand to maintain a single DO setpoint, which mechanically stresses the air blowers; and microbial communities responsible for treatment are stressed with large and rapid DO fluctuations. Currently, WWTP operators rely on trial-and-error to identify a DO setpoint that treats water to an ammonia concentration well below the permited limit. Such a  large factor of safety is required to ensure that under the highest flow and load conditions, water will be fully treated and the WWTP will not exceed their nutrient limits. To save energy and reduce excessive use of air blowers at WWTP, a new aeration paradigm is needed.
+One of the greatest and costliest threats to surface waterways in the United States is nutrient pollution [@usepa2011working]. The removal of nitrogen and phosphorus from water at municipal wastewater treatment plants (WWTP) is necessary to address the growing environmental challenge. As states implement increasingly stringint nutrient limits on WWTP, the cost of has wastewater treatment increased substancially. Biological nutrient removal is acheived by introducing dissolved oxygen (DO) via industrial air blowers, which is one of the largest operating costs for WWTP. Conventionally, air blower output is increased or decreased relative to the measured concentration of DO in an aeration basin to maintain a DO setpoint where nitrogen removal is effectively guarenteed. While this approach ensures treatment, there are multiple drawback. DO control  is energy inefficient as aeration is provided whether ammonia is present or absent; conventional control leads to large fluctuations in air demand to maintain a single DO setpoint, which mechanically stresses the air blowers; and microbial communities responsible for treatment are stressed with large and rapid DO fluctuations. Currently, WWTP operators rely on trial-and-error to identify a DO setpoint that treats water to an ammonia concentration well below the permited limit. Such a  large factor of safety is required to ensure that under the highest flow and load conditions, water will be fully treated and the WWTP will not exceed their nutrient limits. To save energy and reduce excessive use of air blowers at WWTP, a new aeration paradigm is needed.
 
 Ammonia-based aeration control (ABAC) is an aeration approach which responds to water quality changes in real-time by adjusting air flow to meet an ammonia setpoint instead of a DO setpoint. ABAC can limit excessive aeration promoting full nitrogen removal, potentially improving phosphorus removal, and reducing effluent ammonia peaks (Rieger et al. 2012). The most popular ABAC configuration utilizes a microbial kinetics model to calculate the aeration demand given a variety of operating parameters such as solids retention time and influent ammonia concentration (Duffy et al. 2010). This feedforward approach can reduce aeration demand, but requires extensive sampling and specialized knowledge for accurate model calibration and implementation. A feedback ABAC option would not require a kinetic model and could adjust DO setpoints from an ammonia sensor in the aeration basin where treatment takes place. However, WWTP operators are hesitent to adopt ABAC due to the instability of the sensors involved in feedback ABAC (specifically ion-selective electrodes) and the potential for the growth of microorganisms that inhibit settling in subsequent treatment at lower DO concentrations (i.e., filamentous bacteria). A third ABAC approach could incorporate statistical process models to predict ammonia in a feedback or feedforward configuration. The advantages of forecasting using statistical and machine learning models is (a) no additional sampling, microbiological analysis, or proprietary software is required to build the model and (b) the forecast can easily replace the current measured value of ammonia in the supervisory control and data acquisition (SCADA) system of the WWTP–which lacks advanced control schema. Existing hurdles to implementation of data-driven systems in WWTP include knowledge and experience. To date, there are only a handful of WWTP in and outside of the U.S. who have implemented model predictive control systems in their facilities.
 
@@ -565,6 +565,7 @@ for(x in obj.list) {
 library(glmnet)
 library(doParallel)
 library(foreach)
+library(neuralnet)
 start <- Sys.time()
 numCores <- detectCores()
 registerDoParallel(numCores)
@@ -580,7 +581,7 @@ if(paste0("all-days-",obj,".RData") %in% list.files(path="results/")) {
 # all.days <- list()
 # for(days in 1:6) {
 all.days <- foreach(days=1:6, 
-                    .combine = 'c', .packages = c("xts","stats","glmnet")) %dopar% {
+                    .combine = 'c', .packages = c("xts","stats","glmnet","neuralnet")) %dopar% {
   # Days to train on
   training.days <- days
   training.obs <- training.days*24*60/5
@@ -613,15 +614,14 @@ all.days <- foreach(days=1:6,
       mod.lm <- cv.glmnet(train.xx[,diurnal.terms],train.yy, alpha=0)
       pred.lm <- predict(mod.lm, newx=train.xx[,diurnal.terms])
       
-          # Calculate training error
+      # Calculate diurnal model training error
       SSE <- mean((train.yy-pred.lm)^2)
       SST <- mean((train.yy-mean(train.yy))^2)
-      Rsqu.lm <- 1-SSE/SST;Rsqu
+      Rsqu.lm <- 1-SSE/SST
       RMSE.lm <- sqrt(SSE)
-      
       pred.lm <- predict(mod.lm, newx=t(test.xx[,diurnal.terms]))
       
-      # Train model when lambda=0 (initial parameter estimate)
+      # Train linear model when lambda=0 (initial parameter estimate)
       mod.ridge <- cv.glmnet(train.xx,train.yy,alpha=0)
       predict.mod.ridge <- predict(mod.ridge, newx=train.xx)
       
@@ -642,18 +642,45 @@ all.days <- foreach(days=1:6,
       mod.adaptive <- cv.glmnet(train.xx,train.yy,alpha=1,penalty.factor=w3)
       pred.adapt <- predict(mod.adaptive,newx=train.xx, s='lambda.1se')
       
-      # Calculate training error
+      # Calculate lasso training error
       SSE <- mean((train.yy-pred.adapt)^2)
       SST <- mean((train.yy-mean(train.yy))^2)
-      Rsqu.adapt <- 1-SSE/SST;Rsqu
+      Rsqu.adapt <- 1-SSE/SST
       RMSE.adapt <- sqrt(SSE)
       SSE <- mean((train.yy-train.xx[,predict.col])^2)
-      Rsqu.persistence <- 1-SSE/SST;Rsqu
+      Rsqu.persistence <- 1-SSE/SST
       RMSE.persistence <- sqrt(SSE)
       
-      # Forecast
+      # Forecast lasso
       pred.adapt <- predict(mod.adaptive,newx=test.xx, s='lambda.1se')
+      
+      # Forecast persistence
       pred.persistence <- test.xx[,predict.col]
+      
+      # Train neural network model
+      nn.train.data <- cbind(train.yy, train.xx[,-diurnal.terms])
+      colnames(nn.train.data)[2:ncol(nn.train.data)] <- paste0("response.",1:ncol(train.xx[,-diurnal.terms]))
+      fmla <- as.formula(paste0("train.yy ~ ",
+                                paste(paste0("response.",1:ncol(train.xx[,-diurnal.terms])),collapse=" + ")))
+      nn <- neuralnet(fmla, data=nn.train.data, hidden=3, 
+                                                      act.fct = "logistic",
+                                                      linear.output = TRUE,
+                                                      stepmax=1e+06)
+      nn.train.data <- train.xx[,-diurnal.terms]
+      colnames(nn.train.data) <- paste0("response.",1:ncol(train.xx[,-diurnal.terms]))
+      pred.nn <- compute(nn, nn.train.data)
+      
+      # Calculate neural network error
+      SSE <- mean((train.yy-pred.nn)^2)
+      SST <- mean((train.yy-mean(train.yy))^2)
+      Rsqu.nn <- 1-SSE/SST
+      RMSE.nn <- sqrt(SSE)
+      
+      # Forecast neural network
+      nn.test.data <- matrix(test.xx[,-diurnal.terms], nrow=1)
+      colnames(nn.test.data) <- paste0("response.",1:length(test.xx[,-diurnal.terms]))
+      pred.nn <- compute(nn, nn.test.data)
+      
         
       # Save results
       # if(i==1) {
@@ -665,7 +692,10 @@ all.days <- foreach(days=1:6,
                                       "Training.RMSE.LM" = as.numeric(RMSE.adapt),
                                       "Diurnal.forecast" =as.numeric(pred.lm),
                                       "Training.R2.D"=as.numeric(Rsqu.lm),
-                                      "Training.RMSE.D"=as.numeric(RMSE.lm))
+                                      "Training.RMSE.D"=as.numeric(RMSE.lm),
+                                      "NN.forecast" =as.numeric(pred.nn),
+                                      "Training.R2.NN"=as.numeric(Rsqu.nn),
+                                      "Training.RMSE.NN"=as.numeric(RMSE.nn))
       # } else {
       #   testing.results <- rbind(testing.results, 
       #                            data.frame("Test.time"= test.index, 
