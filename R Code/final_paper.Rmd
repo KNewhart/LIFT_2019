@@ -707,7 +707,7 @@ all.days <- foreach(days=1:6,
                                       "Training.RMSE.NN"=as.numeric(RMSE.nn), 
                                       "LM.variables" = as.character(paste(coefList[,1], coefList[,2], collapse=" ")))
       # } else {
-      #   testing.results <- rbind(testing.results, 
+      #   testing.results <- rbind(testing.results,
       #                            data.frame("Test.time"= test.index, 
       #                                 "Actual.forecast" = as.numeric(test.yy),
       #                                 "LM.forecast" = as.numeric(pred.adapt),
@@ -716,7 +716,11 @@ all.days <- foreach(days=1:6,
       #                                 "Training.RMSE.LM" = as.numeric(RMSE.adapt),
       #                                 "Diurnal.forecast" =as.numeric(pred.lm),
       #                                 "Training.R2.D"=as.numeric(Rsqu.lm),
-      #                                 "Training.RMSE.D"=as.numeric(RMSE.lm)))
+      #                                 "Training.RMSE.D"=as.numeric(RMSE.lm),
+      #                                 "NN.forecast" =as.numeric(pred.nn),
+      #                                 "Training.R2.NN"=as.numeric(Rsqu.nn),
+      #                                 "Training.RMSE.NN"=as.numeric(RMSE.nn), 
+      #                                 "LM.variables" = as.character(paste(coefList[,1], coefList[,2], collapse=" "))))
       # }
       # print(paste("Completed", obj, days, f, i,"in",(total.obs-2*f-training.obs+1)))
       return(testing.results)
