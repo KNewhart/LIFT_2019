@@ -561,7 +561,7 @@ for(x in obj.list) {
 
 ```
 
-```{r Train and test diurnal and linear models, echo=FALSE}
+```{r Train and test diurnal and linear models, eval=FALSE, fig.height=2.5, include=FALSE}
 library(glmnet)
 library(doParallel)
 library(foreach)
@@ -569,7 +569,7 @@ library(neuralnet)
 start <- Sys.time()
 numCores <- detectCores()
 registerDoParallel(numCores)
-for(obj in obj.list[1:4]) {
+for(obj in obj.list) {
   
 obj.data <- get(obj)
 predict.col <- which(colnames(obj.data) == "Z7.NH4")
@@ -625,7 +625,6 @@ all.days <- foreach(days=1:6,
       mod.ridge <- cv.glmnet(train.xx,train.yy,alpha=0)
       predict.mod.ridge <- predict(mod.ridge, newx=train.xx)
       
-      
       # # Plot training
       # par(mar=c(3.5,3.5,1,10),xpd=TRUE, cex=0.9, family="serif")
       # plot(train.yy,ylab="",xlab="", type="l", ylim=c(min(predict.mod.ridge),max(train.yy)))
@@ -642,12 +641,6 @@ all.days <- foreach(days=1:6,
       set.seed(Sys.time())
       mod.adaptive <- cv.glmnet(train.xx,train.yy,alpha=1,penalty.factor=w3)
       pred.adapt <- predict(mod.adaptive,newx=train.xx, s='lambda.1se')
-      
-      coefList <- coef(mod.adaptive, s='lambda.1se')
-      coefList <- data.frame(colnames(obj.data)[coefList@i+1],coefList@x)
-      names(coefList) <- c('var','val')
-      coefList <- coefList[order(abs(coefList[,"val"]), decreasing=TRUE),]
-
       
       # Calculate lasso training error
       SSE <- mean((train.yy-pred.adapt)^2)
@@ -676,7 +669,6 @@ all.days <- foreach(days=1:6,
       nn.train.data <- train.xx[,-diurnal.terms]
       colnames(nn.train.data) <- paste0("response.",1:ncol(train.xx[,-diurnal.terms]))
       pred.nn <- compute(nn, nn.train.data)
-      pred.nn <- pred.nn$net.result
       
       # Calculate neural network error
       SSE <- mean((train.yy-pred.nn)^2)
@@ -688,7 +680,6 @@ all.days <- foreach(days=1:6,
       nn.test.data <- matrix(test.xx[,-diurnal.terms], nrow=1)
       colnames(nn.test.data) <- paste0("response.",1:length(test.xx[,-diurnal.terms]))
       pred.nn <- compute(nn, nn.test.data)
-      pred.nn <- pred.nn$net.result
       
         
       # Save results
@@ -704,8 +695,7 @@ all.days <- foreach(days=1:6,
                                       "Training.RMSE.D"=as.numeric(RMSE.lm),
                                       "NN.forecast" =as.numeric(pred.nn),
                                       "Training.R2.NN"=as.numeric(Rsqu.nn),
-                                      "Training.RMSE.NN"=as.numeric(RMSE.nn), 
-                                      "LM.variables" = as.character(paste(coefList[,1], coefList[,2], collapse=" ")))
+                                      "Training.RMSE.NN"=as.numeric(RMSE.nn))
       # } else {
       #   testing.results <- rbind(testing.results, 
       #                            data.frame("Test.time"= test.index, 
@@ -726,41 +716,15 @@ all.days <- foreach(days=1:6,
 }
 # all.days[[length(all.days)+1]] <- all.horizons
   return(list(all.horizons))
-                    }
-print(paste("Completed", obj, "at", Sys.time()))
+}
 assign(paste0("all.days.",obj), all.days)
 save(list=paste0("all.days.",obj), file=paste0("results/all-days-",obj,".RData"))
 rm(list=paste0("all.days.",obj))
 }
 }
 end <- Sys.time()
-print(end-start)
+end-start
 ```
-
-```{r Which variables are significant?}
-all.days.files <- sapply(list.files("results/",pattern="all-days-"), function(x) load(paste0("results/",x), envir=.GlobalEnv))
-
-for(file in all.days.files) {
-  all.days <- get(file)
-  label <- 
-  all.horizons.training.error <- list()
-  for(step in 1:length(all.days[[1]])) {
-    for(days in 1:length(all.days)) {
-      obj.data <- all.days[[days]]
-      results <- obj.data[[step]]
-      temp.results <- xts(cbind(results$Training.R2.D,results$Training.R2.LM), order.by = results$Test.time)
-      colnames(temp.results) <- paste0(days,"Day.",c("Training.R2.D", "Training.R2.LM"))
-      if(days==1) {
-        r2.results <- temp.results
-      } else {
-        r2.results <- cbind(r2.results, temp.results)
-      }
-    }
-    all.horizons.training.error[[length(all.horizons.training.error)+1]] <- r2.results
-  }
-}
-```
-
 
 ```{r Plot DO and ab3_4.0 model training error by training window, echo=FALSE, fig.height=8.5}
 library(xts)
@@ -777,6 +741,7 @@ layout(layout.matrix, widths=c(.5, .5), heights = c(0.03,0.26,0.26,0.26, 0.09))
 
 for(file in all.days.files) {
   all.days <- get(file)
+  label <- 
   all.horizons.training.error <- list()
   for(step in 1:length(all.days[[1]])) {
     for(days in 1:length(all.days)) {
