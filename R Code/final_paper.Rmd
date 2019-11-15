@@ -561,7 +561,7 @@ for(x in obj.list) {
 
 ```
 
-```{r Train and test diurnal and linear models, eval=FALSE, fig.height=2.5, include=FALSE}
+```{r Train and test diurnal and linear models, echo=FALSE, fig.height=2.5}
 library(glmnet)
 library(doParallel)
 library(foreach)
@@ -927,6 +927,119 @@ colnames(table.data) <- paste(seq(1,ncol(all.days.array.avg),by=2)*5, "Min")
 kable(table.data)
 ```
 
+
+### Neural network
+```{r Train and test nn model, echo=FALSE, fig.height=2.5}
+library(doParallel)
+library(foreach)
+library(neuralnet)
+
+numCores <- detectCores()
+registerDoParallel(numCores)
+
+
+# For testing code #
+# obj <- obj.list[1]
+# obj.data <- get(obj)
+# predict.col <- which(colnames(obj.data) == "Z7.NH4")
+# days <- 1
+# For testing code #
+
+start <- Sys.time()
+print(start)
+for(obj in obj.list[1:4]) {
+obj.data <- get(obj)
+predict.col <- which(colnames(obj.data) == "Z7.NH4")
+if(paste0("all-days-nn-",obj,".RData") %in% list.files(path="results/")) {
+  next
+} else {
+# all.days <- foreach(days=1:6, 
+                    # .combine = 'c', .packages = c("xts","stats","neuralnet")) %dopar% {
+all.days <- for(days in 1:6) {
+  # Days to train on
+  training.days <- days
+  training.obs <- training.days*24*60/5
+  total.obs <- nrow(obj.data)
+  testing.obs <- total.obs-training.obs
+  testing.days <- testing.obs/(24*60/5)
+  # What is the forecast horizon? (given in number of steps & number of minutes )
+  horizon.min <- seq(5,75,by=5)
+  horizon.steps <- horizon.min/5
+  
+  all.horizons <- list()
+  for(f in horizon.steps) {
+    # for(i in 1:(total.obs-2*f-training.obs+1)) { # Faster to do this in an lapply loop
+    # testing.results <- do.call("rbind", lapply(1:(total.obs-2*f-training.obs+1), function(i) {
+    testing.results <- foreach(i=1:(total.obs-2*f-training.obs+1), 
+                    .combine = 'rbind', .errorhandling='remove', .packages = c("xts","stats","neuralnet")) %dopar% {
+        
+      # Setup training and testing data for model
+      current.obs <- training.obs+f+i-1
+      train.xx <- matrix(as.numeric(obj.data[i:(current.obs-f),]), nrow=length(i:(current.obs-f)), byrow=FALSE)
+      train.yy <- matrix(as.numeric(obj.data[(i+f):current.obs, predict.col]), nrow=length(i:(current.obs-f)), byrow=FALSE)
+      n <- intersect(which(!is.na(train.yy)), which(!apply(train.xx,1,anyNA)))
+      train.xx <- train.xx[n,]
+      train.yy <- train.yy[n,]
+      test.xx <- matrix(as.numeric(obj.data[current.obs,]), nrow=1, byrow=FALSE)
+      test.yy <- matrix(as.numeric(obj.data[(current.obs+f), predict.col]), nrow=1, byrow=FALSE)
+      test.index <- index(obj.data[current.obs,])
+      
+      # Train neural network model
+      diurnal.terms <- c(grep("cos", colnames(obj.data)), grep("sin", colnames(obj.data)))
+      nn.train.data <- cbind(train.yy, train.xx[,-diurnal.terms])
+      colnames(nn.train.data)[2:ncol(nn.train.data)] <- paste0("response.",1:ncol(train.xx[,-diurnal.terms]))
+      fmla <- as.formula(paste0("train.yy ~ ",
+                                paste(paste0("response.",1:ncol(train.xx[,-diurnal.terms])),collapse=" + ")))
+      nn <- neuralnet(fmla, data=nn.train.data, hidden=3, 
+                      act.fct = "logistic",
+                      linear.output = TRUE,
+                      stepmax=1e+06)
+      nn.train.data <- train.xx[,-diurnal.terms]
+      colnames(nn.train.data) <- paste0("response.",1:ncol(train.xx[,-diurnal.terms]))
+      pred.nn <- compute(nn, nn.train.data)
+      pred.nn <- pred.nn$net.result
+      
+      # Calculate neural network error
+      SSE <- mean((train.yy-pred.nn)^2)
+      SST <- mean((train.yy-mean(train.yy))^2)
+      Rsqu.nn <- 1-SSE/SST
+      RMSE.nn <- sqrt(SSE)
+      
+      # Forecast neural network
+      nn.test.data <- matrix(test.xx[,-diurnal.terms], nrow=1)
+      colnames(nn.test.data) <- paste0("response.",1:length(test.xx[,-diurnal.terms]))
+      pred.nn <- compute(nn, nn.test.data)
+      pred.nn <- pred.nn$net.result
+      
+      testing.results <- data.frame("Test.time"= test.index, 
+                                      "Actual.forecast" = as.numeric(test.yy),
+                                      "NN.forecast" = as.numeric(pred.nn),
+                                      "Training.R2.NN" = as.numeric(Rsqu.nn),
+                                      "Training.RMSE.NN" = as.numeric(RMSE.nn))
+      
+      return(testing.results)
+      # if(i==1) all.results <- testing.results
+      # if(i>1) all.results <- rbind(all.results, testing.results)
+    }
+    # ))
+    all.horizons[[length(all.horizons)+1]] <- testing.results
+    # all.horizons[[length(all.horizons)+1]] <- all.results
+    print(paste("Completed", obj, days, f))
+}
+all.days[[length(all.days)+1]] <- all.horizons
+  # return(list(all.horizons))
+}
+if(length(all.days) < 6) {
+  print(paste("Error on", obj))
+}
+assign(paste0("all.days.nn.",obj), all.days)
+save(list=paste0("all.days.nn.",obj), file=paste0("results/all-days-nn-",obj,".RData"))
+rm(list=paste0("all.days.nn.",obj))
+}
+}
+end <- Sys.time()
+end-start
+```
 
 
 # Appendix
