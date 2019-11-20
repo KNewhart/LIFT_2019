@@ -930,14 +930,10 @@ kable(table.data)
 
 ### Neural network
 ```{r Train and test nn model, echo=FALSE, fig.height=2.5}
-library(doParallel)
-library(foreach)
+library(doSNOW)
+library(parallel)
 library(neuralnet)
-
-numCores <- detectCores()
-registerDoParallel(numCores)
-
-
+library(neuralnet)
 # For testing code #
 # obj <- obj.list[1]
 # obj.data <- get(obj)
@@ -947,15 +943,18 @@ registerDoParallel(numCores)
 
 start <- Sys.time()
 print(start)
+dir.create(paste0("results/nn"), showWarnings = FALSE)
 for(obj in obj.list[1:4]) {
 obj.data <- get(obj)
 predict.col <- which(colnames(obj.data) == "Z7.NH4")
-if(paste0("all-days-nn-",obj,".RData") %in% list.files(path="results/")) {
-  next
-} else {
+# if(paste0("all-days-nn-",obj,".RData") %in% list.files(path="results/")) {
+#   next
+# } else {
+
 # all.days <- foreach(days=1:6, 
                     # .combine = 'c', .packages = c("xts","stats","neuralnet")) %dopar% {
-all.days <- for(days in 1:6) {
+for(days in 1:6) {
+  if(paste0("nn_",obj,"_",days,"d.RData") %in% list.files(path="results/nn/")) next
   # Days to train on
   training.days <- days
   training.obs <- training.days*24*60/5
@@ -970,6 +969,19 @@ all.days <- for(days in 1:6) {
   for(f in horizon.steps) {
     # for(i in 1:(total.obs-2*f-training.obs+1)) { # Faster to do this in an lapply loop
     # testing.results <- do.call("rbind", lapply(1:(total.obs-2*f-training.obs+1), function(i) {
+    
+
+    
+    # detect cores with parallel() package
+    nCores <- detectCores(logical = FALSE)
+    # detect threads with parallel()
+    nThreads<- detectCores(logical = TRUE)
+    # Create doSNOW compute cluster
+    cluster = makeCluster(nThreads, type = "SOCK")
+    class(cluster);
+    # register the cluster
+    registerDoSNOW(cluster)
+    
     testing.results <- foreach(i=1:(total.obs-2*f-training.obs+1), 
                     .combine = 'rbind', .errorhandling='remove', .packages = c("xts","stats","neuralnet")) %dopar% {
         
@@ -1020,23 +1032,32 @@ all.days <- for(days in 1:6) {
       return(testing.results)
       # if(i==1) all.results <- testing.results
       # if(i>1) all.results <- rbind(all.results, testing.results)
-    }
+                    }
+    # stop cluster and remove clients
+      stopCluster(cluster)
+      # insert serial backend, otherwise error in repetetive tasks
+      registerDoSEQ()
+      # clean up a bit.
+      invisible(gc); remove(nCores); remove(nThreads); remove(cluster); 
+        
     # ))
     all.horizons[[length(all.horizons)+1]] <- testing.results
     # all.horizons[[length(all.horizons)+1]] <- all.results
-    print(paste("Completed", obj, days, f))
+    print(paste("Completed", obj, days, f, Sys.time()))
 }
-all.days[[length(all.days)+1]] <- all.horizons
   # return(list(all.horizons))
+    names(all.horizons) <- seq(5,75,by=5)
+    save(all.horizons, file=paste0("results/nn/",paste0("nn_",obj,"_",days,"d.RData")))
+    rm(all.horizons)
 }
-if(length(all.days) < 6) {
-  print(paste("Error on", obj))
+# if(length(all.days) < 6) {
+#   print(paste("Error on", obj))
+# }
+# assign(paste0("all.days.nn.",obj), all.days)
+# save(list=paste0("all.days.nn.",obj), file=paste0("results/all-days-nn-",obj,".RData"))
+# rm(list=paste0("all.days.nn.",obj))
 }
-assign(paste0("all.days.nn.",obj), all.days)
-save(list=paste0("all.days.nn.",obj), file=paste0("results/all-days-nn-",obj,".RData"))
-rm(list=paste0("all.days.nn.",obj))
-}
-}
+# }
 end <- Sys.time()
 end-start
 ```
