@@ -1043,7 +1043,7 @@ for(days in 1:6) {
     # ))
     all.horizons[[length(all.horizons)+1]] <- testing.results
     # all.horizons[[length(all.horizons)+1]] <- all.results
-    print(paste("Completed", obj, days, f, Sys.time()))
+    print(paste("Completed", obj, days, f, "at", Sys.time()))
 }
   # return(list(all.horizons))
     names(all.horizons) <- seq(5,75,by=5)
