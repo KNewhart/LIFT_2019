@@ -153,6 +153,8 @@ for(x in obj.list) {
 lapply(obj.list, 
        function(x) assign(x, get(x)[(nrow(get(x)) - min(sapply(obj.list, function(x) nrow(get(x))))):nrow(get(x)),], 
                           envir = .GlobalEnv))
+
+fixed.data <- lapply(obj.list, function(x) get(x))
 ```
 
 ## Stability assessment
