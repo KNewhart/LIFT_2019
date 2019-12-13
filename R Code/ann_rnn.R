@@ -1,3 +1,6 @@
+setwd("C:\\Users\\R-Compiler\\Documents\\KNewhart\\LIFT_2019\\R Code")
+
+##### Only NN
 # Import data
 {
   library(xts)
@@ -70,42 +73,48 @@
   fixed.data <- lapply(obj.list, function(x) get(x))
 }
 
-
-
 library(dplyr)
 # install.packages("keras")
 library(keras)
 library(doSNOW)
-library(parallel)
-
-# detect cores with parallel() package
-nCores <- detectCores(logical = FALSE)
 # detect threads with parallel()
 nThreads<- detectCores(logical = TRUE)
-# Create doSNOW compute cluster
-cluster = makeCluster(nThreads, type = "SOCK", outfile="")
-# register the cluster
-registerDoSNOW(cluster)
 
 obj.data <- fixed.data[[1]] # DO dataset
+load("results/all-days-ab3_do.RData")
 all.data <- data.matrix(obj.data)
 all.data <- all.data[,-which(colnames(all.data) == "Z9.DO")]
 predict.col <- which(colnames(all.data) == "Z7.NH4")
 
+
 all.days.ann <- list()
 all.days.rnn <- list()
 days <- 1
+
 for(days in 1:6) {
+  
   lookback <- days*24*60/5 # Observations will go back 'days' at the 5 min interval
   forecast.horizon <- seq(1,15) # 5-75 min forecast intervals
-  
   
   all.horizons.ann <- list()
   all.horizons.rnn <- list()
   delay <- forecast.horizon[1] # Targets will be some forecast horizon (in observations) into the future
+  
   for(delay in forecast.horizon) {
+    
+    # Create doSNOW compute cluster
+    cluster = makeCluster(nThreads, type = "SOCK", outfile="")
+    # register the cluster
+    registerDoSNOW(cluster)
+    # iterations <- seq(1,(nrow(all.data)-(lookback+delay)))
+    iterations <- seq((6*24*60/5-lookback)+1, nrow(all.data)-(lookback+delay),by=1)
+    pb <- txtProgressBar(min=0, max = length(iterations), style = 3)
+    progress <- function(n) setTxtProgressBar(pb, n)
+    opts <- list(progress = progress)
+    print(paste("Starting ANN:", days, delay))
+    
     # ANN
-    results <- foreach(i=seq(1,(nrow(all.data)-(lookback+delay)),by=10), .combine="rbind", .packages=c("keras")) %dopar% {
+    results <- foreach(i=iterations, .combine="rbind", .packages=c("keras"), .options.snow = opts) %dopar% {
       # results <- foreach(i=1:5, .combine="rbind", .packages=c("keras")) %dopar% {
       # Create model, add layers, and compile the model
       model <- keras_model_sequential() %>%
@@ -150,12 +159,30 @@ for(days in 1:6) {
 
       return(data.frame(rownames(all.data)[(lookback+i)], actual, prediction, r2, e))
     }
+    close(pb)
+    stopCluster(cluster)
+    
     all.horizons.ann[[length(all.horizons.ann)+1]] <- results
+    
     # print(paste("Completed",days,"days and", delay*5,"min forecast at", Sys.time()))
     rm(results)
+    
+    
+    
+    
+    # Create doSNOW compute cluster
+    cluster = makeCluster(nThreads, type = "SOCK", outfile="")
+    # register the cluster
+    registerDoSNOW(cluster)
+
+    pb <- txtProgressBar(min=0, max = length(iterations), style = 3)
+    progress <- function(n) setTxtProgressBar(pb, n)
+    opts <- list(progress = progress)
+    
     #RNN
-    results <- foreach(i=seq(1,(nrow(all.data)-(lookback+delay)),by=10), .combine="rbind", .packages=c("keras")) %dopar% {
-      # results <- foreach(i=1:5, .combine="rbind", .packages=c("keras")) %dopar% {
+    print(paste("Starting RNN:", days, delay))
+    # results <- foreach(i=seq(1,(nrow(all.data)-(lookback+delay)),by=10), .combine="rbind", .packages=c("keras")) %dopar% {
+      results <- foreach(i=iterations, .combine="rbind", .packages=c("keras"), .options.snow = opts) %dopar% {
       # Create model, add layers, and compile the model
       model <- keras_model_sequential() %>%
         # layer_dense(units=round((ncol(all.data)-1)*2/3), input_shape=c(NULL, ncol(all.data))) %>%
@@ -197,21 +224,24 @@ for(days in 1:6) {
       # r2;e;past.test
       
       return(data.frame(rownames(all.data)[(lookback+i)], actual, prediction, r2, e))
-    }
+      }
+      close(pb)
+      stopCluster(cluster)
+      
     all.horizons.rnn[[length(all.horizons.rnn)+1]] <- results
     rm(results)
+
   }
   all.days.ann[[length(all.days.ann)+1]] <- all.horizons.ann
   all.days.rnn[[length(all.days.rnn)+1]] <- all.horizons.rnn
 }
 save(all.days.ann, file="results/ann_2layer_do.RData")
 save(all.days.rnn, file="results/rnn_2layer_do.RData")
-# stop cluster and remove clients
-stopCluster(cluster)
-# insert serial backend, otherwise error in repetetive tasks
-registerDoSEQ()
-# clean up a bit.
-invisible(gc); remove(nCores); remove(nThreads); remove(cluster);
 
-# load(file="results/ann_2layer_do.RData")
-# load(file="results/rnn_2layer_do.RData")
+# clean up a bit.
+# invisible(gc); remove(nThreads); remove(cluster)
+
+
+###### Residual NN
+all.days.files <- sapply(list.files("results/",pattern="all-days-"), function(x) load(paste0("results/",x), envir=.GlobalEnv))
+# Merge with all data and re-run
