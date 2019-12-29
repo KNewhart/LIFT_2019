@@ -81,8 +81,8 @@ library(doSNOW)
 # detect threads with parallel()
 nThreads<- detectCores(logical = TRUE)
 
-obj.data <- fixed.data[[1]] # DO dataset
-load("results/all-days-ab3_do.RData")
+obj.data <- fixed.data[[4]] # DO dataset
+load("results/all-days-ab3_4.0_300.RData")
 all.data <- data.matrix(obj.data)
 all.data <- all.data[,-which(colnames(all.data) == "Z9.DO")]
 predict.col <- which(colnames(all.data) == "Z7.NH4")
@@ -232,10 +232,10 @@ for(days in 1:6) {
   }
   all.days.ann[[length(all.days.ann)+1]] <- all.horizons.ann
   # all.days.rnn[[length(all.days.rnn)+1]] <- all.horizons.rnn
-  save(all.days.ann, file="results/nn/ann_2layer_do.RData")
+  save(all.days.ann, file="results/nn/ann_2layer_abac4_300.RData")
   # save(all.days.rnn, file="results/nn/rnn_2layer_do.RData")
 }
-save(all.days.ann, file="results/ann_2layer_do.RData")
+save(all.days.ann, file="results/ann_2layer_abac4_300.RData")
 # save(all.days.rnn, file="results/rnn_2layer_do.RData")
 #clean up a bit.
 invisible(gc); remove(nThreads); remove(cluster)
@@ -245,6 +245,7 @@ invisible(gc); remove(nThreads); remove(cluster)
 all.days.ann.r <- list()
 # all.days.rnn.r <- list()
 days <- 1
+nThreads<- detectCores(logical = TRUE)
 
 # Convert timestamps to runtime and project onto a unit circle
 t <- 1440
@@ -468,10 +469,10 @@ for(days in 1:6) {
   }
   all.days.ann.r[[length(all.days.ann.r)+1]] <- all.horizons.ann.r
   # all.days.rnn.r[[length(all.days.rnn.r)+1]] <- all.horizons.rnn.r
-  save(all.days.ann.r, file="results/nn/ann_r_2layer_do.RData")
+  save(all.days.ann.r, file="results/nn/ann_r_2layer_abac4_300.RData")
   # save(all.days.rnn.r, file="results/nn/rnn_r_2layer_do.RData")
 }
-save(all.days.ann.r, file="results/ann_r_2layer_do.RData")
+save(all.days.ann.r, file="results/ann_r_2layer_abac4_300.RData")
 # save(all.days.rnn.r, file="results/rnn_r_2layer_do.RData")
 
 
